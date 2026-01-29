@@ -23,9 +23,9 @@ export default function HomePage() {
         </nav>
 
         <div className="max-w-4xl mx-auto text-center">
-          <h1 className="text-5xl md:text-6xl font-bold tracking-tight mb-6">
+          <h1 className="text-5xl md:text-6xl font-bold tracking-tight mb-6 bg-gradient-to-r from-orange-500 via-indigo-500 to-green-500 text-transparent bg-clip-text">
             Transform Your Meetings into
-            <span className="text-primary"> Actionable Insights</span>
+             Actionable Insights
           </h1>
           <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
             Upload your meeting recordings and let AI generate comprehensive summaries,
