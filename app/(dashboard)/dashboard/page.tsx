@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { auth } from "@/lib/auth";
+import { createClient } from "@/lib/supabase/server";
 import { db } from "@/lib/db";
 import { meetings, actionItems } from "@/lib/schema";
 import { eq, desc, and, count } from "drizzle-orm";
@@ -23,14 +23,17 @@ import {
 import { formatDistanceToNow } from "date-fns";
 
 export default async function DashboardPage() {
-  const session = await auth();
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
-  if (!session?.user?.id) {
+  if (!user?.id) {
     return null;
   }
 
   const recentMeetings = await db.query.meetings.findMany({
-    where: eq(meetings.userId, session.user.id),
+    where: eq(meetings.userId, user.id),
     orderBy: [desc(meetings.createdAt)],
     limit: 5,
     with: {
@@ -42,7 +45,7 @@ export default async function DashboardPage() {
   const totalMeetings = await db
     .select({ count: count() })
     .from(meetings)
-    .where(eq(meetings.userId, session.user.id));
+    .where(eq(meetings.userId, user.id));
 
   const pendingActions = await db
     .select({ count: count() })
@@ -50,7 +53,7 @@ export default async function DashboardPage() {
     .innerJoin(meetings, eq(actionItems.meetingId, meetings.id))
     .where(
       and(
-        eq(meetings.userId, session.user.id),
+        eq(meetings.userId, user.id),
         eq(actionItems.completed, false)
       )
     );
@@ -98,7 +101,7 @@ export default async function DashboardPage() {
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold">
-            Welcome back, {session.user.name?.split(" ")[0]}!
+            Welcome back, {user.email?.split("@")[0]}!
           </h1>
           <p className="text-muted-foreground mt-1">
             Here&apos;s an overview of your meeting summaries

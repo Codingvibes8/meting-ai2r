@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { createClient } from "@/lib/supabase/server";
 import { db } from "@/lib/db";
 import { meetings, summaries, actionItems } from "@/lib/schema";
 import { eq, and } from "drizzle-orm";
@@ -11,14 +11,17 @@ interface RouteContext {
 export async function GET(request: NextRequest, context: RouteContext) {
   try {
     const { id } = await context.params;
-    const session = await auth();
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
-    if (!session?.user?.id) {
+    if (!user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const meeting = await db.query.meetings.findFirst({
-      where: and(eq(meetings.id, id), eq(meetings.userId, session.user.id)),
+      where: and(eq(meetings.id, id), eq(meetings.userId, user.id)),
       with: {
         summary: true,
         actionItems: true,
@@ -42,9 +45,12 @@ export async function GET(request: NextRequest, context: RouteContext) {
 export async function PUT(request: NextRequest, context: RouteContext) {
   try {
     const { id } = await context.params;
-    const session = await auth();
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
-    if (!session?.user?.id) {
+    if (!user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -53,7 +59,7 @@ export async function PUT(request: NextRequest, context: RouteContext) {
 
     // Verify ownership
     const existingMeeting = await db.query.meetings.findFirst({
-      where: and(eq(meetings.id, id), eq(meetings.userId, session.user.id)),
+      where: and(eq(meetings.id, id), eq(meetings.userId, user.id)),
     });
 
     if (!existingMeeting) {
@@ -87,15 +93,18 @@ export async function PUT(request: NextRequest, context: RouteContext) {
 export async function DELETE(request: NextRequest, context: RouteContext) {
   try {
     const { id } = await context.params;
-    const session = await auth();
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
-    if (!session?.user?.id) {
+    if (!user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     // Verify ownership
     const existingMeeting = await db.query.meetings.findFirst({
-      where: and(eq(meetings.id, id), eq(meetings.userId, session.user.id)),
+      where: and(eq(meetings.id, id), eq(meetings.userId, user.id)),
     });
 
     if (!existingMeeting) {

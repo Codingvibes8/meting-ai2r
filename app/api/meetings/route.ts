@@ -1,19 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { createClient } from "@/lib/supabase/server";
 import { db } from "@/lib/db";
 import { meetings } from "@/lib/schema";
 import { eq, desc } from "drizzle-orm";
 
 export async function GET() {
   try {
-    const session = await auth();
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
-    if (!session?.user?.id) {
+    if (!user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const userMeetings = await db.query.meetings.findMany({
-      where: eq(meetings.userId, session.user.id),
+      where: eq(meetings.userId, user.id),
       orderBy: [desc(meetings.createdAt)],
       with: {
         summary: true,
@@ -33,9 +36,12 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await auth();
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
-    if (!session?.user?.id) {
+    if (!user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -62,7 +68,7 @@ export async function POST(request: NextRequest) {
     const [meeting] = await db
       .insert(meetings)
       .values({
-        userId: session.user.id,
+        userId: user.id,
         title,
         description: description || null,
         participants: JSON.stringify(participantsArray),

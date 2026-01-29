@@ -1,14 +1,17 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { createClient } from "@/lib/supabase/server";
 import { db } from "@/lib/db";
 import { meetings, actionItems } from "@/lib/schema";
 import { eq, count, sql } from "drizzle-orm";
 
 export async function GET() {
   try {
-    const session = await auth();
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
-    if (!session?.user?.id) {
+    if (!user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -16,35 +19,35 @@ export async function GET() {
     const totalMeetings = await db
       .select({ count: count() })
       .from(meetings)
-      .where(eq(meetings.userId, session.user.id));
+      .where(eq(meetings.userId, user.id));
 
     // Completed meetings
     const completedMeetings = await db
       .select({ count: count() })
       .from(meetings)
       .where(
-        sql`${meetings.userId} = ${session.user.id} AND ${meetings.status} = 'completed'`
+        sql`${meetings.userId} = ${user.id} AND ${meetings.status} = 'completed'`
       );
 
     // Total duration
     const totalDuration = await db
       .select({ total: sql<number>`COALESCE(SUM(${meetings.duration}), 0)` })
       .from(meetings)
-      .where(eq(meetings.userId, session.user.id));
+      .where(eq(meetings.userId, user.id));
 
     // Action items stats
     const totalActions = await db
       .select({ count: count() })
       .from(actionItems)
       .innerJoin(meetings, eq(actionItems.meetingId, meetings.id))
-      .where(eq(meetings.userId, session.user.id));
+      .where(eq(meetings.userId, user.id));
 
     const completedActions = await db
       .select({ count: count() })
       .from(actionItems)
       .innerJoin(meetings, eq(actionItems.meetingId, meetings.id))
       .where(
-        sql`${meetings.userId} = ${session.user.id} AND ${actionItems.completed} = true`
+        sql`${meetings.userId} = ${user.id} AND ${actionItems.completed} = true`
       );
 
     return NextResponse.json({

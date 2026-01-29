@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { auth } from "@/lib/auth";
+import { createClient } from "@/lib/supabase/server";
 import { db } from "@/lib/db";
 import { meetings } from "@/lib/schema";
 import { eq, desc } from "drizzle-orm";
@@ -25,14 +25,17 @@ import {
 import { format } from "date-fns";
 
 export default async function MeetingsPage() {
-  const session = await auth();
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
-  if (!session?.user?.id) {
+  if (!user?.id) {
     return null;
   }
 
   const allMeetings = await db.query.meetings.findMany({
-    where: eq(meetings.userId, session.user.id),
+    where: eq(meetings.userId, user.id),
     orderBy: [desc(meetings.date)],
     with: {
       actionItems: true,

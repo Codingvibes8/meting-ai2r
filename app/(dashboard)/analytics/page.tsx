@@ -1,11 +1,10 @@
-import { auth } from "@/lib/auth";
+import { createClient } from "@/lib/supabase/server";
 import { db } from "@/lib/db";
 import { meetings, actionItems } from "@/lib/schema";
-import { eq, desc, and, count, sql, gte } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -13,15 +12,18 @@ import { Calendar, Clock, CheckSquare, TrendingUp } from "lucide-react";
 import { AnalyticsCharts } from "@/components/analytics-charts";
 
 export default async function AnalyticsPage() {
-  const session = await auth();
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
-  if (!session?.user?.id) {
+  if (!user?.id) {
     return null;
   }
 
   // Get all meetings for the user
   const allMeetings = await db.query.meetings.findMany({
-    where: eq(meetings.userId, session.user.id),
+    where: eq(meetings.userId, user.id),
     orderBy: [desc(meetings.date)],
   });
 
@@ -42,7 +44,7 @@ export default async function AnalyticsPage() {
     .select()
     .from(actionItems)
     .innerJoin(meetings, eq(actionItems.meetingId, meetings.id))
-    .where(eq(meetings.userId, session.user.id));
+    .where(eq(meetings.userId, user.id));
 
   const completedActions = allActionItems.filter(
     (a) => a.action_items.completed
